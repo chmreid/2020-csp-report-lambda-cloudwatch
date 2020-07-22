@@ -13,9 +13,9 @@ These CloudFormation templates create the following components:
 * CloudWatch logs that lambdas use for logging
 * Route 53 record to make API gateway available at dockstore-security.org
 
-## Testing Locally
+## Test Lambda Code Locally
 
-To test locally, use the `python-lambda-local` Python package.
+To test locally, use the `python-lambda-local` Python package and the files in the `test/` folder.
 
 ### Quick start
 
@@ -23,7 +23,7 @@ Quick start instructions for local testing:
 
 * Create a virtual environment
 * Install python-lambda-local into virtual environment
-* Run your Python script through python-lambda-local
+* Run your Python lambda function code through python-lambda-local
 
 To create the virtual environment:
 
@@ -41,9 +41,10 @@ pip install python-lambda-local
 
 To test your code, you need the following three things:
 
-* Name of the Python file
+* Name of the Python file with your lambda function code
 * Name of function to use as lambda function entry point (must have `f(event, context)` method signature)
 * Name of JSON file containing event data
+
 
 Here is a very simple example of an event data json file:
 
