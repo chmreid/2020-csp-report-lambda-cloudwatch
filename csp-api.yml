@@ -60,29 +60,9 @@ Resources:
           This lambda function listens for CSP reports arriving at dockstore-security.org,
           processes the JSON payload, filters reports, and logs CSP reports to CloudWatch.
           '''
-          
-          def setup_logging(log_level):
-              '''Set up the logging module to log messages to a JSON stream'''
-              logger = logging.getLogger()
-          
-              # Lambda sets up one default handler
-              # If there are more, something has changed, and need an operator to investigate
-              assert len(logger.handlers) == 1
-          
-              # Create a new logging handler to replace the default handler
-              formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
-              handler = logging.StreamHandler(stream=sys.stdout)
-              handler.setFormatter(formatter)
-              logger = logging.getLogger(name)
-              logger.setLevel(logging.DEBUG)
-              logger.addHandler(handler)
-              # Remove old logger before returning
-              logger.removeHandler(logger.handlers[0])
-          
+
           def lambda_handler(event, context):
               '''Log messages, then return success status'''
-              setup_logging(logging.INFO)
               logger = logging.getLogger()
               payload = json.loads(event['body'])
               logger.info(payload)
@@ -96,7 +76,7 @@ Resources:
 
       Description: "Dockstore CSP lambda function to filter and log reports"
       FunctionName: !Ref "lambdaFunctionName"
-      Handler: "index.handler"
+      Handler: "index.lambda_handler"
       MemorySize: 128
       Role: !GetAtt "lambdaIAMRole.Arn"
       Runtime: "python2.7"
