@@ -65,6 +65,63 @@ Resources:
                   'body': 'success'
               }
 
+
+
+
+---
+
+
+
+  apiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - "apiGatewayRootMethod"
+    Properties:
+      RestApiId: !Ref "apiGateway"
+      StageName: !Ref "apiGatewayEndpoint"
+
+  lambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        ZipFile: |
+          import json
+          from pprint import pprint
+          # Dockstore CSP Reporting: CloudWatch Logger Lambda
+          # This lambda function listens for CSP reports arriving at dockstore-security.org,
+          # processes the JSON payload, filters reports, and logs CSP reports to CloudWatch.
+          def get_payload(event):
+            # Safely attempt to get the payload
+            try:
+              body = event['body']
+            except KeyError:
+              raise RuntimeError("Could not get body attribute of event")
+            try:
+              payload = json.loads(body)
+            except (TypeError, json.JSONDecodeError):
+              raise RuntimeError("Body was not a JSON string that could be loaded")
+            return payload
+          def log_payload(payload):
+              # Return boolean: should we log this payload
+              # Check for CSP report fields
+          def lambda_handler(event, context):
+              # Log messages, then return success status
+              try:
+                payload = get_payload(event)
+                if log_payload(payload):
+                  print(json.dumps(payload, sort_keys=True, default=str))
+                  return {
+                      'statusCode': 200,
+                      'headers': {'Content-Type': 'text/plain'},
+                      'body': 'success'
+                  }
+              except RuntimeError as e:
+                return {
+                    'statusCode': 500,
+                    'headers': {'Content-Type': 'text/plain'},
+                    'body': str(e)
+                }
+
       Description: "Dockstore CSP lambda function to filter and log reports"
       FunctionName: !Ref "lambdaFunctionName"
       Handler: "index.lambda_handler"
