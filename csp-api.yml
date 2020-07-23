@@ -52,24 +52,16 @@ Resources:
         ZipFile: |
           import json
           from pprint import pprint
-          
-          '''
-          Dockstore CSP Reporting:
-          CloudWatch Lambda Function
-          
-          This lambda function listens for CSP reports arriving at dockstore-security.org,
-          processes the JSON payload, filters reports, and logs CSP reports to CloudWatch.
-          '''
-
+          # Dockstore CSP Reporting: CloudWatch Logger Lambda
+          # This lambda function listens for CSP reports arriving at dockstore-security.org,
+          # processes the JSON payload, filters reports, and logs CSP reports to CloudWatch.
           def lambda_handler(event, context):
-              '''Log messages, then return success status'''
+              # Log messages, then return success status
               payload = json.loads(event['body'])
               print(json.dumps(payload, sort_keys=True, default=str))
               return {
                   'statusCode': 200,
-                  'headers': {
-                    'Content-Type': 'text/plain'
-                  },
+                  'headers': {'Content-Type': 'text/plain'},
                   'body': 'success'
               }
 
