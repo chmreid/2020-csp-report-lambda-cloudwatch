@@ -16,7 +16,7 @@ Parameters:
   domainName:
     Description: "Domain name that will be used to call the API"
     Type: String
-    Default: dockstore-security.org
+    Default: "dockstore-security.org"
 
   restApiName:
     Description: "The name of the CSP reporting API"
@@ -38,18 +38,17 @@ Resources:
   cspDomainName:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
-      DomainName: !Sub domainName
+      DomainName: !Ref domainName
       EndpointConfiguration:
         Types:
           - REGIONAL
-      CertificateArn: !Sub acmCertificateArn
-      RegionalCertificateArn: !Sub acmCertificateArn
+      RegionalCertificateArn: !Ref acmCertificateArn
       SecurityPolicy: TLS_1_2
 
   cspRestApi:
     Type: 'AWS::ApiGateway::RestApi'
     Properties:
-      Name: !Sub restApiName
+      Name: !Ref restApiName
       Description: "Dockstore CSP Rest API"
 
   cspMethod:
@@ -69,14 +68,14 @@ Resources:
     DependsOn:
       - "cspMethod"
     Properties:
-      StageName: !Sub basePath
+      StageName: !Ref basePath
       RestApiId: !Ref cspRestApi
 
   cspBasePathMapping:
     Type: 'AWS::ApiGateway::BasePathMapping'
     Properties:
-      BasePath: !Sub basePath
-      DomainName: !Sub domainName
+      BasePath: !Ref basePath
+      DomainName: !Ref cspDomainName
       RestApiId: !Ref cspRestApi
 
   cspLambda:
@@ -138,6 +137,6 @@ Resources:
 
 Outputs:
   apiGatewayInvokeURL:
-    Value: !Sub "https://${cspRestApi}.execute-api.${AWS::Region}.amazonaws.com/${baseName}"
+    Value: !Sub "https://${cspRestApi}.execute-api.${AWS::Region}.amazonaws.com/${basePath}"
   lambdaArn:
     Value: !GetAtt "cspLambda.Arn"
