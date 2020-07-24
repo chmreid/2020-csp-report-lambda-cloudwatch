@@ -86,13 +86,12 @@ Resources:
       FunctionName: !Ref "lambdaName"
       Handler: "index.lambda_handler"
       MemorySize: 128
-      Role: !GetAtt "lambdaIAMRole.Arn"
-      Runtime: "python2.7"
+      Role: !GetAtt "cspLambdaIamRole.Arn"
+      Runtime: "python3.7"
       Timeout: 10
       Code:
         ZipFile: |
           import json
-          from pprint import pprint
           # Dockstore CSP Reporting: CloudWatch Logger Lambda
           # This lambda function listens for CSP reports arriving at dockstore-security.org,
           # processes the JSON payload, filters reports, and logs CSP reports to CloudWatch.
