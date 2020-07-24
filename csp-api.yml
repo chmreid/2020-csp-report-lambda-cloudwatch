@@ -16,7 +16,7 @@ Parameters:
   domainName:
     Description: "Domain name that will be used to call the API"
     Type: String
-    Default: "dockstore-security.org"
+    Default: "api.dockstore-security.org"
 
   restApiName:
     Description: "The name of the CSP reporting API"
@@ -56,6 +56,10 @@ Resources:
     Properties:
       AuthorizationType: "NONE"
       HttpMethod: "POST"
+      RestApiId: !Ref cspRestApi
+      ResourceId: !GetAtt
+        - cspRestApi
+        - RootResourceId
       Integration:
         IntegrationHttpMethod: "POST"
         Type: "AWS_PROXY"
