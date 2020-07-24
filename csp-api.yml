@@ -138,6 +138,6 @@ Resources:
 
 Outputs:
   apiGatewayInvokeURL:
-    Value: !Sub "https://${apiGateway}.execute-api.${AWS::Region}.amazonaws.com/${apiGatewayStageName}"
+    Value: !Sub "https://${cspRestApi}.execute-api.${AWS::Region}.amazonaws.com/${baseName}"
   lambdaArn:
     Value: !GetAtt "cspLambda.Arn"
