@@ -31,6 +31,16 @@ Parameters:
     Type: String
     Default: "api.dockstore-security.org"
 
+  restApiName:
+    Description: "The name to give the CSP reporting API"
+    Type: String
+    Default: "dockstore-csp-api"
+
+  lambdaName:
+    Description: "The name to give the CSP reporting lambda function"
+    Type: String
+    Default: "dockstore-csp-lambda"
+
   # The ACM certificate for *.dockstore-security.org
   acmCertificateArn:
     Description: "The ARN of the ACM Certificate for domainName"
@@ -57,7 +67,7 @@ Resources:
   cspRestApi:
     Type: 'AWS::ApiGateway::RestApi'
     Properties:
-      Name: !Sub '${AWS::StackName}-restapi'
+      Name: !Ref restApiName
       Description: "Dockstore CSP Rest API"
       Role: !GetAtt "cspGatewayIamRole.Arn"
       EndpointConfiguration:
@@ -109,7 +119,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     Properties:
       Description: "Dockstore CSP lambda function to filter and log reports"
-      FunctionName: !Sub '${AWS::StackName}-lambda'
+      FunctionName: !Ref lambdaName
       Handler: "index.lambda_handler"
       MemorySize: 128
       Role: !GetAtt "cspLambdaIamRole.Arn"
