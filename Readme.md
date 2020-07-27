@@ -1,4 +1,4 @@
-# # Dockstore CSP: CloudFormation templates for API Gateway + Lambda to CloudWatch logs
+# Dockstore CSP: CloudFormation templates for API Gateway + Lambda to CloudWatch logs
 
 This repo contains CloudFormation templates to set up an API gateway that sends
 content security policy reports to a lambda function, which filters the reports
