@@ -3,8 +3,8 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Dockstore CSP API Gateway and Lambda Function"
 
 # This CloudFormation template creates the Dockstore Content Security Policy
-# reporting domain and connects it with an API gateway that calls a lambda
-# function that logs the CSP reports to CloudWatch.
+# reporting URL (api.dockstore-security.org/csp-report) and connects it with
+# an API gateway that calls a lambda function that logs CSP reports to CloudWatch.
 #
 # The following links were extremely helpful:
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-apigateway-domainname.html
@@ -37,7 +37,6 @@ Parameters:
     Default: 'arn:aws:acm:us-east-1:635220370222:certificate/35a87509-1d0c-41cd-b91a-79dae65cd3a8'
     Type: String
 
-
 Resources:
   # This does not create a DNS record, it just adds the custom domain name
   # to the API gateway control panel (so it can be associated with a gateway later).
@@ -60,6 +59,7 @@ Resources:
     Properties:
       Name: !Sub '${AWS::StackName}-restapi'
       Description: "Dockstore CSP Rest API"
+      Role: !GetAtt "cspGatewayIamRole.Arn"
       EndpointConfiguration:
         Types:
           - REGIONAL
