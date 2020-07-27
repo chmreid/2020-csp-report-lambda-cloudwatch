@@ -195,7 +195,7 @@ Resources:
           Type: A
           AliasTarget:
             DNSName: !GetAtt "cspDomainName.RegionalDomainName"
-            HostedZoneId: !Ref route53ZoneId
+            HostedZoneId: !GetAtt "cspDomainName.RegionalHostedZoneId"
 
 Outputs:
   apiGatewayInvokeURL:
