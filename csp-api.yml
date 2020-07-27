@@ -13,6 +13,11 @@ Parameters:
     Type: String
     Default: csp-report
 
+  route53ZoneId:
+    Description: "Zone ID of an existing Route 53 Hosted Zone. This should be the Hosted Zone associated with domainName."
+    Type: String
+    Default: "Z07573473MIRROO49AAC8"
+
   domainName:
     Description: "Domain name that will be used to call the API"
     Type: String
@@ -50,6 +55,9 @@ Resources:
     Properties:
       Name: !Ref restApiName
       Description: "Dockstore CSP Rest API"
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
 
   cspMethod:
     Type: "AWS::ApiGateway::Method"
@@ -77,9 +85,12 @@ Resources:
 
   cspBasePathMapping:
     Type: 'AWS::ApiGateway::BasePathMapping'
+    DependsOn:
+      - "cspDeployment"
     Properties:
       BasePath: !Ref basePath
       DomainName: !Ref cspDomainName
+      Stage: !Ref basePath
       RestApiId: !Ref cspRestApi
 
   cspLambda:
@@ -108,9 +119,18 @@ Resources:
                   'body': 'success'
               }
 
+  cspLambdaApiGatewayInvoke:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt "cspLambda.Arn"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${cspRestApi}/*/POST/"
+
   cspLambdaIamRole:
     Type: "AWS::IAM::Role"
     Properties:
+      RoleName: "csp-lambda-iam-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -131,13 +151,51 @@ Resources:
                 Effect: "Allow"
                 Resource:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${lambdaName}:*"
-          PolicyName: "lambda"
+              - Action:
+                  - route53:GetChange
+                Effect: Allow
+                Resource: "arn:aws:route53:::change/*"
+          PolicyName: "csp-lambda-iam-policy"
 
-  lambdaLogGroup:
+  cspGatewayIamRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "csp-gateway-iam-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "apigateway.amazonaws.com"
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: !GetAtt "cspLambda.Arn"
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+          PolicyName: "csp-gateway-iam-policy"
+
+  cspLambdaLogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
       LogGroupName: !Sub "/aws/lambda/${lambdaName}"
       RetentionInDays: 90
+
+  cspRoute53Record:
+    Type: "AWS::Route53::RecordSetGroup"
+    Properties:
+      HostedZoneId: !Ref route53ZoneId
+      RecordSets:
+        - Name: !Ref domainName
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt "cspDomainName.RegionalDomainName"
+            HostedZoneId: !Ref route53ZoneId
 
 Outputs:
   apiGatewayInvokeURL:
