@@ -1,45 +1,46 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "My API Gateway and Lambda function"
+Description: "Dockstore CSP API Gateway and Lambda Function"
 
-# hat tip:
+# This CloudFormation template creates the Dockstore Content Security Policy
+# reporting domain and connects it with an API gateway that calls a lambda
+# function that logs the CSP reports to CloudWatch.
+#
+# The following links were extremely helpful:
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-apigateway-domainname.html
 # https://gist.github.com/magnetikonline/c314952045eee8e8375b82bc7ec68e88
 # https://github.com/awslabs/route53-dynamic-dns-with-lambda/blob/master/route53-ddns.yml
 
 Parameters:
+  # If this is set to "foo" then the API endpoint is api.dockstore-security.org/foo
   basePath:
     Description: "Base path of the API (the portion of the URL coming after the domain)"
     Type: String
     Default: csp-report
 
+  # The Route 53 Hosted Zone for dockstore-security.org must already exist
   route53ZoneId:
     Description: "Zone ID of an existing Route 53 Hosted Zone. This should be the Hosted Zone associated with domainName."
     Type: String
     Default: "Z07573473MIRROO49AAC8"
 
+  # We use the api subdomain because the cert is for *.dockstore-security.org
+  # and so that we don't have to modify an existing DNS record
   domainName:
     Description: "Domain name that will be used to call the API"
     Type: String
     Default: "api.dockstore-security.org"
 
-  restApiName:
-    Description: "The name of the CSP reporting API"
-    Type: String
-    Default: "dockstore-csp-api"
-
-  lambdaName:
-    Description: "The name of the CSP reporting lambda function"
-    Type: String
-    Default: "dockstore-csp-lambda"
-
+  # The ACM certificate for *.dockstore-security.org
   acmCertificateArn:
-    Description: "The ARN of the ACM Certificate for domainName."
+    Description: "The ARN of the ACM Certificate for domainName"
     Default: 'arn:aws:acm:us-east-1:635220370222:certificate/35a87509-1d0c-41cd-b91a-79dae65cd3a8'
     Type: String
 
 
 Resources:
+  # This does not create a DNS record, it just adds the custom domain name
+  # to the API gateway control panel (so it can be associated with a gateway later).
   cspDomainName:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
@@ -49,16 +50,24 @@ Resources:
           - REGIONAL
       RegionalCertificateArn: !Ref acmCertificateArn
       SecurityPolicy: TLS_1_2
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-domainname'
 
+  # This creates the API listener
   cspRestApi:
     Type: 'AWS::ApiGateway::RestApi'
     Properties:
-      Name: !Ref restApiName
+      Name: !Sub '${AWS::StackName}-restapi'
       Description: "Dockstore CSP Rest API"
       EndpointConfiguration:
         Types:
           - REGIONAL
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-restapi'
 
+  # The API listener will trigger the lambda function
   cspMethod:
     Type: "AWS::ApiGateway::Method"
     Properties:
@@ -75,6 +84,7 @@ Resources:
           - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
           - lambdaArn: !GetAtt "cspLambda.Arn"
 
+  # Specify the stage name (the path where the API can be called) to use for the Rest API
   cspDeployment:
     Type: "AWS::ApiGateway::Deployment"
     DependsOn:
@@ -83,6 +93,7 @@ Resources:
       StageName: !Ref basePath
       RestApiId: !Ref cspRestApi
 
+  # Map the API gateway custom domain name to the Rest API
   cspBasePathMapping:
     Type: 'AWS::ApiGateway::BasePathMapping'
     DependsOn:
@@ -93,16 +104,20 @@ Resources:
       Stage: !Ref basePath
       RestApiId: !Ref cspRestApi
 
+  # Create the lambda function that logs CSP reports (JSON payload) to CloudWatch
   cspLambda:
     Type: "AWS::Lambda::Function"
     Properties:
       Description: "Dockstore CSP lambda function to filter and log reports"
-      FunctionName: !Ref "lambdaName"
+      FunctionName: !Sub '${AWS::StackName}-lambda'
       Handler: "index.lambda_handler"
       MemorySize: 128
       Role: !GetAtt "cspLambdaIamRole.Arn"
       Runtime: "python3.7"
       Timeout: 10
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-lambda'
       Code:
         ZipFile: |
           import json
@@ -119,6 +134,7 @@ Resources:
                   'body': 'success'
               }
 
+  # Give the API gateway permission to invoke the lambda
   cspLambdaApiGatewayInvoke:
     Type: "AWS::Lambda::Permission"
     Properties:
@@ -127,6 +143,7 @@ Resources:
       Principal: "apigateway.amazonaws.com"
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${cspRestApi}/*/POST/"
 
+  # IAM policy to allow lambda function to create log events
   cspLambdaIamRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -157,6 +174,7 @@ Resources:
                 Resource: "arn:aws:route53:::change/*"
           PolicyName: "csp-lambda-iam-policy"
 
+  # IAM policy to allow CSP to call lambda function
   cspGatewayIamRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -180,12 +198,14 @@ Resources:
                   - lambda:InvokeFunction
           PolicyName: "csp-gateway-iam-policy"
 
+  # CloudWatch log group for lambda function
   cspLambdaLogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
       LogGroupName: !Sub "/aws/lambda/${lambdaName}"
       RetentionInDays: 90
 
+  # Route 53 DNS record to map domainName to API gateway endpoint
   cspRoute53Record:
     Type: "AWS::Route53::RecordSetGroup"
     Properties:
@@ -196,9 +216,12 @@ Resources:
           AliasTarget:
             DNSName: !GetAtt "cspDomainName.RegionalDomainName"
             HostedZoneId: !GetAtt "cspDomainName.RegionalHostedZoneId"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-route53-record'
 
 Outputs:
   apiGatewayInvokeURL:
-    Value: !Sub "https://${cspRestApi}.execute-api.${AWS::Region}.amazonaws.com/${basePath}"
+    Value: !Sub "https://${domainName}/{basePath}"
   lambdaArn:
     Value: !GetAtt "cspLambda.Arn"
